@@ -27,38 +27,57 @@ public class AdminController {
     public String findAll(Model model,
                           @CurrentSecurityContext(expression = "authentication.principal") User principal) {
         model.addAttribute("users", userService.getAllUsers());
-        model.addAttribute("roles",roleService.getAllRoles());
         model.addAttribute("user",principal);
         return "user-list";
     }
 
-    @PostMapping ("admin/new" )
-    public String saveUser (@ModelAttribute("user") @Valid User user,
-                            @RequestParam("role") ArrayList<Long> roles) {
+    @GetMapping("/admin/new")
+    public String newPerson(@ModelAttribute("user") User user, Model model) {
+        model.addAttribute("listRoles",roleService.getAllRoles());
+        return "user-form";
+    }
+
+    @PostMapping()
+    public String create(@ModelAttribute("user") @Valid User user,
+                         BindingResult bindingResult,
+                         @RequestParam("role") ArrayList<Long> roles) {
+        if (bindingResult.hasErrors())
+            return "user-form";
+
         user.setRolesList(roleService.findByIdRoles(roles));
         userService.addUser(user);
         return "redirect:/admin";
     }
-
     @GetMapping("/admin/{id}")
     public String find(@PathVariable("id") int id, Model model) {
         model.addAttribute("user", userService.getUserById(id));
         return "user-info";
     }
 
-    @PatchMapping("/admin/{id}/edit")
-    public String update(User user,
+    @GetMapping("/admin/{id}/edit")
+    public String edit(Model model, @PathVariable("id") int id) {
+        model.addAttribute("user", userService.getUserById(id));
+        model.addAttribute("role", roleService.getAllRoles());
+        return "user-update";
+    }
+
+    @PatchMapping("/admin/{id}")
+    public String update(@ModelAttribute("person") @Valid User user, BindingResult bindingResult,
                          @PathVariable("id") int id,
                          @RequestParam("role") ArrayList<Long>roles) {
+        if (bindingResult.hasErrors())
+            return "user-update";
+
         user.setRolesList(roleService.findByIdRoles(roles));
         userService.update(id, user);
         return "redirect:/admin";
-}
+    }
 
-
-    @PostMapping ("/admin/{id}/delete")
-    public String deleteUserById(@PathVariable("id") int id) {
+    @RequestMapping(value="/admin/{id}/delete", method = RequestMethod.GET)
+    public ModelAndView deleteUser(@PathVariable("id") int id) {
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("redirect:/admin");
         userService.removeUser(id);
-        return "redirect:/admin";
+        return modelAndView;
     }
 }
